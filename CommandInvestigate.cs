@@ -74,7 +74,7 @@ namespace PlayerInfoLibrary
                 else
                 {
                     if (caller is ConsolePlayer)
-                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10, true);
+                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10);
                     else
                         pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page);
                     isCSteamID = false;

@@ -295,11 +295,7 @@ namespace PlayerInfoLibrary
                 MySqlCommand command = Connection.CreateCommand();
                 command.Parameters.AddWithValue("@steamid", steamId.ToString());
                 command.Parameters.AddWithValue("@instanceid", InstanceID.ToString());
-                //command.CommandText = "SELECT * FROM `" + Table + "` WHERE `SteamID` = @steamid LIMIT 1;";
-                command.CommandText = "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT `ServerName` FROM `playerinfo_instance` WHERE `ServerID` = `a`.`LastServerID`) AS `LastServerName` FROM `playerinfo` AS `a` LEFT JOIN `playerinfo_server` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (`a`.`SteamID` = @steamid AND `b`.`ServerID` = @instanceid)" +
-                    " UNION " +
-                    "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT `ServerName` FROM `playerinfo_instance` WHERE `ServerID` = `a`.`LastServerID`) AS `LastServerName` FROM `playerinfo` AS `a` LEFT JOIN `playerinfo_server` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE(`a`.`SteamID` = @steamid AND a.LastServerID = b.ServerID) OR (a.SteamID = @steamid and b.ServerID IS NULL) LIMIT 1";
-
+                command.CommandText = "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT `ServerName` FROM `"+TableInstance+"` WHERE `ServerID` = `a`.`LastServerID`) AS `LastServerName` FROM `"+Table+"` AS `a` LEFT JOIN `"+TableServer+"` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamID = @steamid ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID";
                 reader = command.ExecuteReader();
                 if (reader.Read())
                 {
@@ -336,7 +332,7 @@ namespace PlayerInfoLibrary
         /// <param name="page">For pagination, set the page to return.</param>
         /// <param name="limit">Limits the number of records to return.</param>
         /// <returns></returns>
-        public List<PlayerData> QueryByName(string playerName, QueryType queryType, out uint totalRecods, bool pagination = true, uint page = 1, uint limit = 4, bool global = false)
+        public List<PlayerData> QueryByName(string playerName, QueryType queryType, out uint totalRecods, bool pagination = true, uint page = 1, uint limit = 4)
         {
             List<PlayerData> playerList = new List<PlayerData>();
             MySqlDataReader reader = null;
@@ -363,42 +359,18 @@ namespace PlayerInfoLibrary
                 {
                     case QueryType.Both:
                         if (pagination)
-                        {
-                            if (global)
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) LIMIT 1;";
-                            else
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND (a.SteamName LIKE @name OR a.CharName LIKE @name) LIMIT 1;";
-                        }
-                        if (global)
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY a.LastLoginGlobal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
-                        else
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY b.LastLoginLocal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
+                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                         break;
                     case QueryType.CharName:
                         if (pagination)
-                        {
-                            if (global)
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND a.CharName LIKE @name;";
-                            else
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND a.CharName LIKE @name;";
-                        }
-                        if (global)
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND a.CharName LIKE @name ORDER BY a.LastLoginGlobal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
-                        else
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND a.CharName LIKE @name ORDER BY b.LastLoginLocal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS `a` LEFT JOIN `" + TableServer + "` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.CharName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
+                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.CharName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                         break;
                     case QueryType.SteamName:
                         if (pagination)
-                        {
-                            if (global)
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND a.SteamName LIKE @name;";
-                            else
-                                command.CommandText += "SELECT COUNT(a.SteamID) AS count FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND a.SteamName LIKE @name;";
-                        }
-                        if (global)
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = a.LastServerID OR b.LastLoginLocal IS NULL) AND a.SteamName LIKE @name ORDER BY a.LastLoginGlobal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
-                        else
-                            command.CommandText += "SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM playerinfo_instance WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE b.ServerID = " + InstanceID + " AND a.SteamName LIKE @name ORDER BY b.LastLoginLocal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS `a` LEFT JOIN `" + TableServer + "` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
+                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                         break;
                 }
 
@@ -441,7 +413,7 @@ namespace PlayerInfoLibrary
 
         private PlayerData BuildPlayerData(MySqlDataReader reader)
         {
-            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), reader.GetString("IP"), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false, reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty);
+            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), reader.GetString("IP"), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false);
         }
 
         // Data Saving section.
@@ -464,7 +436,7 @@ namespace PlayerInfoLibrary
                 command.Parameters.AddWithValue("@steamname", pdata.SteamName.Truncate(200));
                 command.Parameters.AddWithValue("@charname", pdata.CharacterName.Truncate(200));
                 command.Parameters.AddWithValue("@ip", pdata.IP);
-                command.Parameters.AddWithValue("@instanceid", InstanceID);
+                command.Parameters.AddWithValue("@instanceid", pdata.ServerID);
                 command.Parameters.AddWithValue("@lastinstanceid", pdata.LastServerID);
                 command.Parameters.AddWithValue("@lastloginglobal", pdata.LastLoginGlobal.ToTimeStamp());
                 command.Parameters.AddWithValue("@lastloginlocal", pdata.LastLoginLocal.ToTimeStamp());

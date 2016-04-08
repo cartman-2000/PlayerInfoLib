@@ -38,7 +38,7 @@ namespace PlayerInfoLibrary
 
         private void Events_OnPlayerConnected(UnturnedPlayer player)
         {
-            PlayerData pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, DateTime.Now, false, false, Database.InstanceID, Provider.serverName);
+            PlayerData pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, Database.InstanceID, Provider.serverName, Database.InstanceID, DateTime.Now, false, false);
             Database.SaveToDB(pData);
         }
     }

@@ -10,26 +10,29 @@ namespace PlayerInfoLibrary
         public string CharacterName { get; internal set; }
         public string IP { get; internal set; }
         public DateTime LastLoginGlobal { get; internal set; }
+        public ushort LastServerID { get; internal set; }
+        public string LastServerName { get; internal set; }
+        public ushort ServerID { get; internal set; }
         public DateTime LastLoginLocal { get; internal set; }
         public bool CleanedBuildables { get; internal set; }
         public bool CleanedPlayerData { get; internal set; }
-        internal ushort LastServerID { get; set; }
-        public string LastServerName { get; internal set; }
         public DateTime CacheTime { get; internal set; }
 
+
         public PlayerData() { SteamID = CSteamID.Nil; }
-        internal PlayerData(CSteamID steamID, string steamName, string characterName, string ip, DateTime lastLoginGlobal, DateTime lastLoginLocal, bool cleanedBuildables, bool cleanedPlayerData, ushort lastServerID, string lastServerName)
+        internal PlayerData(CSteamID steamID, string steamName, string characterName, string ip, DateTime lastLoginGlobal, ushort lastServerID, string lastServerName, ushort serverID, DateTime lastLoginLocal, bool cleanedBuildables, bool cleanedPlayerData)
         {
             SteamID = steamID;
             SteamName = steamName;
             CharacterName = characterName;
             IP = ip;
             LastLoginGlobal = lastLoginGlobal;
+            LastServerID = lastServerID;
+            LastServerName = lastServerName;
+            ServerID = serverID;
             LastLoginLocal = lastLoginLocal;
             CleanedBuildables = cleanedBuildables;
             CleanedPlayerData = cleanedPlayerData;
-            LastServerID = lastServerID;
-            LastServerName = lastServerName;
         }
     }
 }
