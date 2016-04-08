@@ -1,7 +1,7 @@
 ﻿using System;
 using Rocket.API;
 
-namespace PlayerInfoLib
+namespace PlayerInfoLibrary
 {
     public class PlayerInfoLibConfig : IRocketPluginConfiguration
     {

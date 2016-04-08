@@ -1,7 +1,7 @@
 ﻿using Steamworks;
 using System;
 
-namespace PlayerInfoLib
+namespace PlayerInfoLibrary
 {
     public class PlayerData
     {
@@ -13,10 +13,12 @@ namespace PlayerInfoLib
         public DateTime LastLoginLocal { get; internal set; }
         public bool CleanedBuildables { get; internal set; }
         public bool CleanedPlayerData { get; internal set; }
+        internal ushort LastServerID { get; set; }
+        public string LastServerName { get; internal set; }
         public DateTime CacheTime { get; internal set; }
 
-        public PlayerData() { }
-        internal PlayerData(CSteamID steamID, string steamName, string characterName, string ip, DateTime lastLoginGlobal, DateTime lastLoginLocal, bool cleanedBuildables, bool cleanedPlayerData)
+        public PlayerData() { SteamID = CSteamID.Nil; }
+        internal PlayerData(CSteamID steamID, string steamName, string characterName, string ip, DateTime lastLoginGlobal, DateTime lastLoginLocal, bool cleanedBuildables, bool cleanedPlayerData, ushort lastServerID, string lastServerName)
         {
             SteamID = steamID;
             SteamName = steamName;
@@ -26,6 +28,8 @@ namespace PlayerInfoLib
             LastLoginLocal = lastLoginLocal;
             CleanedBuildables = cleanedBuildables;
             CleanedPlayerData = cleanedPlayerData;
+            LastServerID = lastServerID;
+            LastServerName = lastServerName;
         }
     }
 }

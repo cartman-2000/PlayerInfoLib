@@ -1,11 +1,12 @@
-﻿using SDG.Unturned;
+﻿using MySql.Data.MySqlClient;
+using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace PlayerInfoLib
+namespace PlayerInfoLibrary
 {
     public static class Extensions
     {
@@ -17,6 +18,11 @@ namespace PlayerInfoLib
         public static long ToTimeStamp(this DateTime datetime)
         {
             return (long)(datetime.ToUniversalTime().Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+        }
+
+        public static bool IsDBNull (this MySqlDataReader reader, string fieldname)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(fieldname));
         }
 
         public static string GetIP(this CSteamID cSteamID)

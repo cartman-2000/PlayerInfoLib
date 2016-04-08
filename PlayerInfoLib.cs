@@ -2,13 +2,14 @@
 using Rocket.Core.Plugins;
 using Rocket.Unturned;
 using Rocket.Unturned.Player;
+using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace PlayerInfoLib
+namespace PlayerInfoLibrary
 {
     public class PlayerInfoLib : RocketPlugin<PlayerInfoLibConfig>
     {
@@ -37,7 +38,7 @@ namespace PlayerInfoLib
 
         private void Events_OnPlayerConnected(UnturnedPlayer player)
         {
-            PlayerData pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, DateTime.Now, false, false);
+            PlayerData pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, DateTime.Now, false, false, Database.InstanceID, Provider.serverName);
             Database.SaveToDB(pData);
         }
     }

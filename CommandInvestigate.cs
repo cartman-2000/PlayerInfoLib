@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace PlayerInfoLib
+namespace PlayerInfoLibrary
 {
     public class CommandInvestigate2 : IRocketCommand
     {
@@ -74,7 +74,7 @@ namespace PlayerInfoLib
                 else
                 {
                     if (caller is ConsolePlayer)
-                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10);
+                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10, true);
                     else
                         pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page);
                     isCSteamID = false;
@@ -83,7 +83,7 @@ namespace PlayerInfoLib
                 {
                     foreach (PlayerData pData in pInfo)
                     {
-                        UnturnedChat.Say(caller, string.Format("{0} : {1} : {2} : {3} : {4}", pData.SteamID, pData.SteamName, pData.CharacterName, pData.IP, pData.LastLoginGlobal));
+                        UnturnedChat.Say(caller, string.Format("{0} : {1} : {2} : {3} : {4} : {5} : {6} : {7}", pData.SteamID, pData.SteamName, pData.CharacterName, pData.IP, pData.LastLoginGlobal, pData.LastServerID, pData.LastLoginLocal, pData.LastServerName));
                     }
                 }
                 else
