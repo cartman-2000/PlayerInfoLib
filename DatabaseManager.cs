@@ -153,9 +153,11 @@ namespace PlayerInfoLibrary
                 if (getInstance.Read())
                 {
                     InstanceID = getInstance.GetUInt16("ServerID");
+                    if (InstanceID == 0)
+                        return false;
                     if (getInstance.GetString("ServerName") != Provider.serverName)
                     {
-                        command.CommandText = "UPDATE `" + TableInstance + "` SET `ServerName` = 'test' WHERE `ServerID` = " + InstanceID + ";";
+                        command.CommandText = "UPDATE `" + TableInstance + "` SET `ServerName` = @servername WHERE `ServerID` = " + InstanceID + ";";
                         command.ExecuteNonQuery();
                     }
                     return true;
@@ -266,9 +268,9 @@ namespace PlayerInfoLibrary
         /// <summary>
         /// Queries the stored player info by Steam ID.
         /// </summary>
-        /// <param name="steamId">String: steamid of the player you want to get player data for.</param>
+        /// <param name="steamId">String: SteamID of the player you want to get player data for.</param>
         /// <param name="cached">Bool: Optional param for checking the cached info first before checking the database(faster checks for previously cached data.)</param>
-        /// <returns>Returns a PlayerData type object if the player data was found, or null.</returns>
+        /// <returns>Returns a PlayerData type object if the player data was found, or an empty PlayerData object if the player wasn't found.</returns>
         public PlayerData QueryById(CSteamID steamId, bool cached = true)
         {
             PlayerData UnsetData = new PlayerData();
@@ -277,9 +279,8 @@ namespace PlayerInfoLibrary
             if (Cache.ContainsKey(steamId) && cached == true)
             {
                 playerData = Cache[steamId];
-                if ((DateTime.Now - playerData.CacheTime).TotalSeconds <= (PlayerInfoLib.Instance.Configuration.Instance.CacheTime * 60))
+                if (!playerData.IsCacheExpired())
                 {
-                    Logger.Log("Hit Cache");
                     return playerData;
                 }
                 else
@@ -293,15 +294,14 @@ namespace PlayerInfoLibrary
                     return UnsetData;
                 }
                 MySqlCommand command = Connection.CreateCommand();
-                command.Parameters.AddWithValue("@steamid", steamId.ToString());
-                command.Parameters.AddWithValue("@instanceid", InstanceID.ToString());
-                command.CommandText = "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT `ServerName` FROM `"+TableInstance+"` WHERE `ServerID` = `a`.`LastServerID`) AS `LastServerName` FROM `"+Table+"` AS `a` LEFT JOIN `"+TableServer+"` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamID = @steamid ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID";
+                command.Parameters.AddWithValue("@steamid", steamId);
+                command.Parameters.AddWithValue("@instance", InstanceID);
+                command.CommandText = "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamID = @steamid ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID";
                 reader = command.ExecuteReader();
                 if (reader.Read())
                 {
                     playerData = BuildPlayerData(reader);
                 }
-                Logger.Log("Hit Database");
                 if (Cache.ContainsKey(steamId))
                     Cache.Remove(steamId);
                 playerData.CacheTime = DateTime.Now;
@@ -331,7 +331,7 @@ namespace PlayerInfoLibrary
         /// <param name="pagination">Enables or disables pagination prior to the return.</param>
         /// <param name="page">For pagination, set the page to return.</param>
         /// <param name="limit">Limits the number of records to return.</param>
-        /// <returns></returns>
+        /// <returns>A list of PlayerData typed data.</returns>
         public List<PlayerData> QueryByName(string playerName, QueryType queryType, out uint totalRecods, bool pagination = true, uint page = 1, uint limit = 4)
         {
             List<PlayerData> playerList = new List<PlayerData>();
@@ -345,9 +345,9 @@ namespace PlayerInfoLibrary
                     Logger.LogError("Error: Cant load player info from DB, plugin hasn't initialized properly.");
                     return playerList;
                 }
-                if (page == 0)
+                if (page == 0 || limit == 0)
                 {
-                    Logger.LogError("Error: Page number must be greater than 0.");
+                    Logger.LogError("Error: Invalid pagination values, these must be above 0.");
                     return playerList;
                 }
                 if (playerName.Trim() == string.Empty)
@@ -358,8 +358,7 @@ namespace PlayerInfoLibrary
 
                 MySqlCommand command = Connection.CreateCommand();
                 command.Parameters.AddWithValue("@name", "%" + playerName + "%");
-                command.Parameters.AddWithValue("@limitstart", limitStart);
-                command.Parameters.AddWithValue("@limit", limit);
+                command.Parameters.AddWithValue("@instance", InstanceID);
                 string type;
                 switch (queryType)
                 {
@@ -377,8 +376,8 @@ namespace PlayerInfoLibrary
                         break;
                 }
                 if (pagination)
-                    command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND " + type + " ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
-                command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) " + type + " ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                    command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID) AS c;";
+                command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                 reader = command.ExecuteReader();
                 if (pagination)
                 {
@@ -428,7 +427,7 @@ namespace PlayerInfoLibrary
                     Logger.LogError("Error: Cant save player info, plugin hasn't initialized properly.");
                     return;
                 }
-                if (pdata.SteamID == CSteamID.Nil)
+                if (!pdata.IsValid())
                 {
                     Logger.LogError("Error: Invalid player data information.");
                     return;

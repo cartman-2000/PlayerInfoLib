@@ -10,8 +10,10 @@ using System.Text;
 
 namespace PlayerInfoLibrary
 {
-    public class CommandInvestigate2 : IRocketCommand
+    public class CommandInvestigate : IRocketCommand
     {
+        internal static readonly string syntax = "<\"Player name\" | SteamID> [page]";
+        internal static readonly string help = "Returns info for players matching the search quarry.";
         public List<string> Aliases
         {
             get { return new List<string>(); }
@@ -24,7 +26,7 @@ namespace PlayerInfoLibrary
 
         public string Help
         {
-            get { return "Returns info for players matching the search quarry."; }
+            get { return help; }
         }
 
         public string Name
@@ -39,7 +41,7 @@ namespace PlayerInfoLibrary
 
         public string Syntax
         {
-            get { return "<\"Player name\" | SteamID> [page]"; }
+            get { return syntax; }
         }
 
         public void Execute(IRocketPlayer caller, string[] command)

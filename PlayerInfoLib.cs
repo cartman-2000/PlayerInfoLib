@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Rocket.API.Collections;
 
 namespace PlayerInfoLibrary
 {
@@ -40,6 +41,17 @@ namespace PlayerInfoLibrary
         {
             PlayerData pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, Database.InstanceID, Provider.serverName, Database.InstanceID, DateTime.Now, false, false);
             Database.SaveToDB(pData);
+        }
+
+        public override TranslationList DefaultTranslations
+        {
+            get
+            {
+                return new TranslationList
+                {
+                    { "investigate_help", CommandInvestigate.syntax + " - " + CommandInvestigate.help },
+                };
+            }
         }
     }
 }
