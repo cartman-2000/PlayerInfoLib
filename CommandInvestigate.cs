@@ -50,9 +50,8 @@ namespace PlayerInfoLibrary
             {
                 UnturnedChat.Say(caller, Syntax + " - " + Help);
             }
-            bool isCSteamID;
             CSteamID cSteamID;
-            uint totalRecods = 0;
+            uint totalRecods = 1;
             uint? page = 1;
             List<PlayerData> pInfo = new List<PlayerData>();
             if (command.Length >= 1)
@@ -70,9 +69,8 @@ namespace PlayerInfoLibrary
                 if (command[0].isCSteamID(out cSteamID))
                 {
                     PlayerData pData = PlayerInfoLib.Database.QueryById(cSteamID);
-                    if(pData != null)
+                    if(pData.IsValid())
                         pInfo.Add(pData);
-                    isCSteamID = true;
                 }
                 else
                 {
@@ -80,13 +78,15 @@ namespace PlayerInfoLibrary
                         pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10);
                     else
                         pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page);
-                    isCSteamID = false;
                 }
                 if (pInfo.Count > 0)
                 {
                     foreach (PlayerData pData in pInfo)
                     {
-                        UnturnedChat.Say(caller, string.Format("{0} : {1} : {2} : {3} : {4} : {5} : {6} : {7}", pData.SteamID, pData.SteamName, pData.CharacterName, pData.IP, pData.LastLoginGlobal, pData.LastServerID, pData.LastLoginLocal, pData.LastServerName));
+                        if (pData.IsLocal())
+                            UnturnedChat.Say(caller, string.Format("Info: {0} [{1}] ({2}), IP: {3}, Local: {4}, Seen: {5}, Cleaned:{6}:{7}", caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP, pData.IsLocal(), pData.LastLoginLocal, pData.CleanedBuildables, pData.CleanedPlayerData));
+                        else
+                            UnturnedChat.Say(caller, string.Format("Info: {0} [{1}] ({2}), IP: {3}, Local: {4}, Seen: {5} on: {6}:{7}", caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP, pData.IsLocal(), pData.LastLoginLocal, pData.LastServerID, pData.LastServerName));
                     }
                 }
                 else

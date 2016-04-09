@@ -4,6 +4,7 @@ using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Timers;
 
 namespace PlayerInfoLibrary
@@ -45,6 +46,7 @@ namespace PlayerInfoLibrary
             Connection.Dispose();
         }
 
+        // Plugin/Database setup section.
         private void CheckSchema()
         {
             try
@@ -128,7 +130,7 @@ namespace PlayerInfoLibrary
                 if (KeepAlive == null)
                 {
                     KeepAlive = new Timer(PlayerInfoLib.Instance.Configuration.Instance.KeepaliveInterval * 60000);
-                    KeepAlive.Elapsed += delegate { CheckConnection(); };
+                    KeepAlive.Elapsed += delegate { CheckConnection(); CheckExpired(); };
                     KeepAlive.AutoReset = true;
                     KeepAlive.Start();
                 }
@@ -376,7 +378,7 @@ namespace PlayerInfoLibrary
                         break;
                 }
                 if (pagination)
-                    command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID) AS c;";
+                    command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID) AS c;";
                 command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (IF(b.ServerID = @instance, b.ServerID = @instance, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                 reader = command.ExecuteReader();
                 if (pagination)
@@ -415,6 +417,15 @@ namespace PlayerInfoLibrary
         private PlayerData BuildPlayerData(MySqlDataReader reader)
         {
             return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), reader.GetString("IP"), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false);
+        }
+
+        private void CheckExpired()
+        {
+            List<KeyValuePair<CSteamID, PlayerData>> tmp = Cache.Where(pd => pd.Value.IsCacheExpired()).ToList<KeyValuePair<CSteamID, PlayerData>>();
+            foreach (KeyValuePair<CSteamID, PlayerData> pdata in tmp)
+            {
+                Cache.Remove(pdata.Key);
+            }
         }
 
         // Data Saving section.
