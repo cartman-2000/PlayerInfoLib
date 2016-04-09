@@ -350,30 +350,35 @@ namespace PlayerInfoLibrary
                     Logger.LogError("Error: Page number must be greater than 0.");
                     return playerList;
                 }
+                if (playerName.Trim() == string.Empty)
+                {
+                    Logger.LogWarning("Warning: Need at least one character in the player name.");
+                    return playerList;
+                }
 
                 MySqlCommand command = Connection.CreateCommand();
                 command.Parameters.AddWithValue("@name", "%" + playerName + "%");
                 command.Parameters.AddWithValue("@limitstart", limitStart);
                 command.Parameters.AddWithValue("@limit", limit);
+                string type;
                 switch (queryType)
                 {
                     case QueryType.Both:
-                        if (pagination)
-                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
-                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND (a.SteamName LIKE @name OR a.CharName LIKE @name) ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                        type = "AND (a.SteamName LIKE @name OR a.CharName LIKE @name)";
                         break;
                     case QueryType.CharName:
-                        if (pagination)
-                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS `a` LEFT JOIN `" + TableServer + "` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.CharName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
-                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.CharName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                        type = "AND a.CharName LIKE @name";
                         break;
                     case QueryType.SteamName:
-                        if (pagination)
-                            command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS `a` LEFT JOIN `" + TableServer + "` AS `b` ON `a`.`SteamID` = `b`.`SteamID` WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
-                        command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND a.SteamName LIKE @name ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                        type = "AND a.SteamName LIKE @name";
+                        break;
+                    default:
+                        type = string.Empty;
                         break;
                 }
-
+                if (pagination)
+                    command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) AND " + type + " ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID) AS d;";
+                command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, (SELECT ServerName FROM `" + TableInstance + "` WHERE ServerID = a.LastServerID) AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (IF(b.ServerID = 1, b.ServerID = 1, b.ServerID = a.LastServerID OR b.SteamID IS NULL)) " + type + " ORDER BY b.LastLoginLocal ASC) AS c GROUP BY c.SteamID" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                 reader = command.ExecuteReader();
                 if (pagination)
                 {
@@ -381,18 +386,15 @@ namespace PlayerInfoLibrary
                         totalRecods = reader.GetUInt32("count");
                     if (!reader.NextResult())
                     {
-                        Logger.Log("hit 1");
                         return playerList;
                     }
                 }
                 if (!reader.HasRows)
                 {
-                    Logger.Log("hit 2");
                     return playerList;
                 }
                 while (reader.Read())
                 {
-                    Logger.Log("hit loop");
                     playerList.Add(BuildPlayerData(reader));
                 }
             }
