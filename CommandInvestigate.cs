@@ -2,6 +2,7 @@ using Rocket.API;
 using Rocket.API.Extensions;
 using Rocket.Unturned.Chat;
 using Rocket.Unturned.Commands;
+using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -53,12 +54,19 @@ namespace PlayerInfoLibrary
             CSteamID cSteamID;
             uint totalRecods = 1;
             uint? page = 1;
+            uint start = 0;
+            uint perPage = caller is ConsolePlayer ? 10u : 4u;
             List<PlayerData> pInfo = new List<PlayerData>();
             if (command.Length >= 1)
             {
                 if (command.Length ==2)
                 {
                     page = command.GetUInt32Parameter(1);
+                    if (page == null || page == 0)
+                    {
+                        UnturnedChat.Say(caller, "Invalid page number");
+                        return;
+                    }
                 }
                 if (command.Length > 2)
                 {
@@ -72,21 +80,31 @@ namespace PlayerInfoLibrary
                     if(pData.IsValid())
                         pInfo.Add(pData);
                 }
+                else if(Parser.checkIP(command[0]))
+                {
+                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.IP, out totalRecods, true, (uint)page, perPage);
+                }
                 else
                 {
-                    if (caller is ConsolePlayer)
-                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, 10);
-                    else
-                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page);
+                        pInfo = PlayerInfoLib.Database.QueryByName(command[0], QueryType.Both, out totalRecods, true, (uint)page, perPage);
                 }
                 if (pInfo.Count > 0)
                 {
+                    start = ((uint)page - 1) * perPage;
+                    UnturnedChat.Say(caller, string.Format("{0} Records found for: {1}, Page: {2} of {3}", totalRecods, command[0], page, (totalRecods / perPage + 1)));
                     foreach (PlayerData pData in pInfo)
                     {
+                        start++;
                         if (pData.IsLocal())
-                            UnturnedChat.Say(caller, string.Format("Info: {0} [{1}] ({2}), IP: {3}, Local: {4}, Seen: {5}, Cleaned:{6}:{7}", caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP, pData.IsLocal(), pData.LastLoginLocal, pData.CleanedBuildables, pData.CleanedPlayerData));
+                        {
+                            UnturnedChat.Say(caller, string.Format("{0}: {1} [{2}] ({3}), IP: {4}", start, caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP));
+                            UnturnedChat.Say(caller, string.Format("Local: {0}, Seen: {1}, Cleaned:{2}:{3}", pData.IsLocal(), pData.LastLoginLocal, pData.CleanedBuildables, pData.CleanedPlayerData));
+                        }
                         else
-                            UnturnedChat.Say(caller, string.Format("Info: {0} [{1}] ({2}), IP: {3}, Local: {4}, Seen: {5} on: {6}:{7}", caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP, pData.IsLocal(), pData.LastLoginLocal, pData.LastServerID, pData.LastServerName));
+                        {
+                            UnturnedChat.Say(caller, string.Format("{0}: {1} [{2}] ({3}), IP: {4}", start, caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(14), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(14), pData.SteamID, pData.IP));
+                            UnturnedChat.Say(caller, string.Format("Local: {0}, Seen: {1} on: {2}:{3}", pData.IsLocal(), pData.LastLoginLocal, pData.LastServerID, pData.LastServerName));
+                        }
                     }
                 }
                 else

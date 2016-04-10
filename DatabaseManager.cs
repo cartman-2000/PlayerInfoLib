@@ -73,7 +73,8 @@ namespace PlayerInfoLibrary
                         " `LastLoginGlobal` bigint(32) NOT NULL," +
                         " `LastServerID` smallint(5) unsigned NOT NULL," +
                         " PRIMARY KEY (`SteamID`)," +
-                        " KEY `LastServerID` (`LastServerID`)" +
+                        " KEY `LastServerID` (`LastServerID`)," +
+                        " KEY `IP` (`IP`)" +
                         ") ENGINE = MyISAM DEFAULT CHARSET = utf8 COLLATE = utf8_unicode_ci; ";
                     command.CommandText += "CREATE TABLE `"+TableInstance+"` (" +
                         " `ServerID` smallint(5) unsigned NOT NULL AUTO_INCREMENT," +
@@ -373,6 +374,9 @@ namespace PlayerInfoLibrary
                     case QueryType.SteamName:
                         type = "AND a.SteamName LIKE @name";
                         break;
+                    case QueryType.IP:
+                        type = "AND a.IP = '"+playerName+"'";
+                        break;
                     default:
                         type = string.Empty;
                         break;
@@ -478,5 +482,6 @@ namespace PlayerInfoLibrary
         SteamName,
         CharName,
         Both,
+        IP,
     }
 }
