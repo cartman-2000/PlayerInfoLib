@@ -21,7 +21,7 @@ namespace PlayerInfoLibrary
         private string TableInstance;
         private string TableServer;
         internal ushort InstanceID { get; private set; }
-        public static readonly uint DatabaseSchemaVersion = 1;
+        public static readonly uint DatabaseSchemaVersion = 2;
         public static readonly uint DatabaseInterfaceVersion = 1;
 
         // Initialization section.
@@ -202,6 +202,46 @@ namespace PlayerInfoLibrary
                     command.CommandText = "INSERT INTO `" + TableConfig + "` (`key`, `value`) VALUES ('version', '1');";
                     command.ExecuteNonQuery();
                 }
+                if (version < 2)
+                {
+                    updatingVersion = 2;
+                    Logger.LogWarning("Updating Playerinfo DB to version: " + updatingVersion);
+                    command.CommandText = "ALTER TABLE `" + Table + "` DROP INDEX IP;" +
+                        "ALTER TABLE `" + Table + "` CHANGE `IP` `IP_old` VARCHAR(16) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL;" +
+                        "ALTER TABLE `" + Table + "` ADD `IP` INT(10) UNSIGNED NOT NULL AFTER `CharName`;";
+                    command.ExecuteNonQuery();
+                    Dictionary<CSteamID, uint> New = new Dictionary<CSteamID, uint>();
+                    command.CommandText = "SELECT SteamID, IP_old FROM `" + Table + "`";
+                    MySqlDataReader result = command.ExecuteReader();
+                    if (result.HasRows)
+                    {
+                        while (result.Read())
+                        {
+                            if (!result.IsDBNull("IP_old"))
+                            {
+                                if (Parser.checkIP(result.GetString("IP_old")))
+                                {
+                                    New.Add((CSteamID)result.GetUInt64("SteamID"), Parser.getUInt32FromIP(result.GetString("IP_old")));
+                                }
+                            }
+                        }
+                    }
+                    result.Close();
+                    result.Dispose();
+                    if (New.Count != 0)
+                    {
+                        foreach (KeyValuePair<CSteamID, uint> record in New)
+                        {
+                            command.CommandText = "UPDATE `" + Table + "` SET `IP` = " + record.Value + " WHERE `SteamID` = " + record.Key + ";";
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                    command.CommandText = "ALTER TABLE `" + Table + "` ADD INDEX(`IP`);" +
+                        "ALTER TABLE `" + Table + "` DROP `IP_old`;" +
+                        "UPDATE `" + TableConfig + "` SET `value` = '2' WHERE `key` = 'version';";
+                    command.ExecuteNonQuery();
+                    Logger.LogWarning("Finished.");
+                }
             }
             catch (MySqlException ex)
             {
@@ -374,7 +414,7 @@ namespace PlayerInfoLibrary
                         type = "AND a.SteamName LIKE @name";
                         break;
                     case QueryType.IP:
-                        type = "AND a.IP = '"+playerName+"'";
+                        type = "AND a.IP = " + Parser.getUInt32FromIP(playerName);
                         break;
                     default:
                         type = string.Empty;
@@ -419,7 +459,7 @@ namespace PlayerInfoLibrary
 
         private PlayerData BuildPlayerData(MySqlDataReader reader)
         {
-            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), reader.GetString("IP"), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false);
+            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), Parser.getIPFromUInt32(reader.GetUInt32("IP")), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false);
         }
 
         private void CheckExpired()
@@ -450,7 +490,7 @@ namespace PlayerInfoLibrary
                 command.Parameters.AddWithValue("@steamid", pdata.SteamID);
                 command.Parameters.AddWithValue("@steamname", pdata.SteamName.Truncate(200));
                 command.Parameters.AddWithValue("@charname", pdata.CharacterName.Truncate(200));
-                command.Parameters.AddWithValue("@ip", pdata.IP);
+                command.Parameters.AddWithValue("@ip", Parser.getUInt32FromIP(pdata.IP));
                 command.Parameters.AddWithValue("@instanceid", pdata.ServerID);
                 command.Parameters.AddWithValue("@lastinstanceid", pdata.LastServerID);
                 command.Parameters.AddWithValue("@lastloginglobal", pdata.LastLoginGlobal.ToTimeStamp());
