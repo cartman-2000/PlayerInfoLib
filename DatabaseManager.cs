@@ -441,6 +441,8 @@ namespace PlayerInfoLibrary
                 {
                     playerList.Add(BuildPlayerData(reader));
                 }
+                if (!pagination)
+                    totalRecods = (uint)playerList.Count;
             }
             catch (MySqlException ex)
             {
