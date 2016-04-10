@@ -439,7 +439,10 @@ namespace PlayerInfoLibrary
                 }
                 while (reader.Read())
                 {
-                    playerList.Add(BuildPlayerData(reader));
+                    PlayerData record = BuildPlayerData(reader);
+                    record.CacheTime = DateTime.Now;
+                    playerList.Add(record);
+
                 }
                 if (!pagination)
                     totalRecods = (uint)playerList.Count;
