@@ -24,7 +24,7 @@ namespace PlayerInfoLibrary
             U.Events.OnPlayerConnected += Events_OnPlayerConnected;
             if (Instance.Configuration.Instance.KeepaliveInterval <= 0)
             {
-                Logger.LogWarning("Error: Keel alive config option must be above 0.");
+                Logger.LogWarning("Error: Keep alive config option must be above 0.");
                 Instance.Configuration.Instance.KeepaliveInterval = 10;
             }
             Instance.Configuration.Save();
@@ -50,6 +50,7 @@ namespace PlayerInfoLibrary
                 return new TranslationList
                 {
                     { "investigate_help", CommandInvestigate.syntax + " - " + CommandInvestigate.help },
+                    { "number_of_records_found", "{0} Records found for: {1}, Page: {2} of {3}" },
                 };
             }
         }

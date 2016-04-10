@@ -248,20 +248,19 @@ namespace PlayerInfoLibrary
 
         private bool HandleException(MySqlException ex, string msg = null)
         {
-            Logger.LogException(ex); 
-
             if (ex.Number == 0)
             {
-                Logger.LogWarning("Connection lost to database server, attempted to reconnect.");
+                Logger.LogException(ex, "Error: Connection lost to database server, attempting to reconnect.");
                 if (CreateConnection())
                 {
+                    Logger.Log("Success.");
                     return true;
                 }
-                Logger.LogWarning("Reconnect Failed.");
+                Logger.LogError("Reconnect Failed.");
             }
             else
             {
-                Logger.LogWarning(ex.Number.ToString() + "" + ((MySqlErrorCode)ex.Number).ToString());
+                Logger.LogWarning(ex.Number.ToString() + ":" + ((MySqlErrorCode)ex.Number).ToString());
                 Logger.LogException(ex , msg != null ? msg : null);
             }
             return false;
