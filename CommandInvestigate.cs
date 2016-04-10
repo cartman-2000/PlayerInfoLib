@@ -33,7 +33,7 @@ namespace PlayerInfoLibrary
 
         public string Name
         {
-            get { return "investigate2"; }
+            get { return "investigate"; }
         }
 
         public List<string> Permissions
