@@ -69,7 +69,7 @@ namespace PlayerInfoLibrary
             }
             if (totalTime >= 60)
             {
-                totalTimeFormated += ((int)((totalTime / 60) % 60)).ToString() + "m";
+                totalTimeFormated += ((int)((totalTime / 60) % 60)).ToString() + "m ";
             }
             totalTimeFormated += ((int)(totalTime % 60)).ToString() + "s";
             return totalTimeFormated;
