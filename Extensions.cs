@@ -54,5 +54,25 @@ namespace PlayerInfoLibrary
             if (string.IsNullOrEmpty(value)) return value;
             return value.Length <= maxLength ? value : value.Substring(0, maxLength);
         }
+
+        // Returns formatted string with how long they've played on the server in d, h, m, s.
+        public static string FormatTotalTime(this int totalTime)
+        {
+            string totalTimeFormated = "";
+            if (totalTime >= (60 * 60 * 24))
+            {
+                totalTimeFormated = ((int)(totalTime / (60 * 60 * 24))).ToString() + "d ";
+            }
+            if (totalTime >= (60 * 60))
+            {
+                totalTimeFormated += ((int)((totalTime / (60 * 60)) % 24)).ToString() + "h ";
+            }
+            if (totalTime >= 60)
+            {
+                totalTimeFormated += ((int)((totalTime / 60) % 60)).ToString() + "m";
+            }
+            totalTimeFormated += ((int)(totalTime % 60)).ToString() + "s";
+            return totalTimeFormated;
+        }
     }
 }

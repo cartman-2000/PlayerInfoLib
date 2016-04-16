@@ -21,7 +21,7 @@ namespace PlayerInfoLibrary
         private string TableInstance;
         private string TableServer;
         internal ushort InstanceID { get; private set; }
-        public static readonly uint DatabaseSchemaVersion = 2;
+        public static readonly uint DatabaseSchemaVersion = 3;
         public static readonly uint DatabaseInterfaceVersion = 1;
 
         // Initialization section.
@@ -240,6 +240,14 @@ namespace PlayerInfoLibrary
                         "ALTER TABLE `" + Table + "` DROP `IP_old`;" +
                         "UPDATE `" + TableConfig + "` SET `value` = '2' WHERE `key` = 'version';";
                     command.ExecuteNonQuery();
+                }
+                if (version < 3)
+                {
+                    updatingVersion = 3;
+                    Logger.LogWarning("Updating Playerinfo DB to version: " + updatingVersion);
+                    command.CommandText = "ALTER TABLE `" + Table + "` ADD `TotalPlayTime` INT NOT NULL AFTER `LastLoginGlobal`;" +
+                        "UPDATE `" + TableConfig + "` SET `value` = '3' WHERE `key` = 'version';";
+                    command.ExecuteNonQuery();
                     Logger.LogWarning("Finished.");
                 }
             }
@@ -338,7 +346,7 @@ namespace PlayerInfoLibrary
                 MySqlCommand command = Connection.CreateCommand();
                 command.Parameters.AddWithValue("@steamid", steamId);
                 command.Parameters.AddWithValue("@instance", InstanceID);
-                command.CommandText = "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (b.ServerID = @instance OR b.ServerID = a.LastServerID OR b.ServerID IS NULL) AND a.SteamID = @steamid ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID";
+                command.CommandText = "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.TotalPlayTime, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (b.ServerID = @instance OR b.ServerID = a.LastServerID OR b.ServerID IS NULL) AND a.SteamID = @steamid ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID";
                 reader = command.ExecuteReader();
                 if (reader.Read())
                 {
@@ -422,7 +430,7 @@ namespace PlayerInfoLibrary
                 }
                 if (pagination)
                     command.CommandText = "SELECT COUNT(*) AS count FROM (SELECT * FROM (SELECT a.SteamID FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID WHERE (b.ServerID = @instance OR b.ServerID = a.LastServerID OR b.ServerID IS NULL) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID) AS c;";
-                command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (b.ServerID = @instance OR b.ServerID = a.LastServerID OR b.ServerID IS NULL) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID ORDER BY g.LastLoginGlobal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
+                command.CommandText += "SELECT * FROM (SELECT a.SteamID, a.SteamName, a.CharName, a.IP, a.LastLoginGlobal, a.TotalPlayTime, a.LastServerID, b.ServerID, b.LastLoginLocal, b.CleanedBuildables, b.CleanedPlayerData, c.ServerName AS LastServerName FROM `" + Table + "` AS a LEFT JOIN `" + TableServer + "` AS b ON a.SteamID = b.SteamID LEFT JOIN `" + TableInstance + "` AS c ON a.LastServerID = c.ServerID WHERE (b.ServerID = @instance OR b.ServerID = a.LastServerID OR b.ServerID IS NULL) " + type + " ORDER BY b.LastLoginLocal ASC) AS g GROUP BY g.SteamID ORDER BY g.LastLoginGlobal DESC" + (pagination ? " LIMIT " + limitStart + ", " + limit + ";" : ";");
                 reader = command.ExecuteReader();
                 if (pagination)
                 {
@@ -464,7 +472,7 @@ namespace PlayerInfoLibrary
 
         private PlayerData BuildPlayerData(MySqlDataReader reader)
         {
-            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), Parser.getIPFromUInt32(reader.GetUInt32("IP")), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false);
+            return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), Parser.getIPFromUInt32(reader.GetUInt32("IP")), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false, reader.GetInt32("TotalPlayTime"));
         }
 
         private void CheckExpired()
@@ -499,10 +507,11 @@ namespace PlayerInfoLibrary
                 command.Parameters.AddWithValue("@instanceid", pdata.ServerID);
                 command.Parameters.AddWithValue("@lastinstanceid", pdata.LastServerID);
                 command.Parameters.AddWithValue("@lastloginglobal", pdata.LastLoginGlobal.ToTimeStamp());
+                command.Parameters.AddWithValue("@totalplaytime", pdata.TotalPlayime);
                 command.Parameters.AddWithValue("@lastloginlocal", pdata.LastLoginLocal.ToTimeStamp());
                 command.Parameters.AddWithValue("@cleanedbuildables", pdata.CleanedBuildables);
                 command.Parameters.AddWithValue("@cleanedplayerdata", pdata.CleanedPlayerData);
-                command.CommandText = "INSERT INTO `" + Table + "` (`SteamID`, `SteamName`, `CharName`, `IP`, `LastLoginGlobal`, `LastServerID`) VALUES (@steamid, @steamname, @charname, @ip, @lastloginglobal, @lastinstanceid) ON DUPLICATE KEY UPDATE `SteamName` = VALUES(`SteamName`), `CharName` = VALUES(`CharName`), `IP` = VALUES(`IP`), `LastLoginGlobal` = VALUES(`LastLoginglobal`), `LastServerID` = VALUES(`LastServerID`);" +
+                command.CommandText = "INSERT INTO `" + Table + "` (`SteamID`, `SteamName`, `CharName`, `IP`, `LastLoginGlobal`, `TotalPlayTime`, `LastServerID`) VALUES (@steamid, @steamname, @charname, @ip, @lastloginglobal, @totalplaytime, @lastinstanceid) ON DUPLICATE KEY UPDATE `SteamName` = VALUES(`SteamName`), `CharName` = VALUES(`CharName`), `IP` = VALUES(`IP`), `LastLoginGlobal` = VALUES(`LastLoginglobal`), `TotalPlayTime` = VALUES(`TotalPlayTime`), `LastServerID` = VALUES(`LastServerID`);" +
                     "INSERT INTO `" + TableServer + "` (`SteamID`, `ServerID`, `LastLoginLocal`, `CleanedBuildables`, `CleanedPlayerData`) VALUES (@steamid, @instanceid, @lastloginlocal, @cleanedplayerdata, @cleanedplayerdata) ON DUPLICATE KEY UPDATE `LastLoginLocal` = VALUES(`LastLoginLocal`), `CleanedBuildables` = VALUES(`CleanedBuildables`), `CleanedPlayerData` = VALUES(`CleanedPlayerData`);";
                 command.ExecuteNonQuery();
                 if (Cache.ContainsKey(pdata.SteamID))
