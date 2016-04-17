@@ -160,6 +160,8 @@ namespace PlayerInfoLibrary
                         return false;
                     if (getInstance.GetString("ServerName") != Provider.serverName)
                     {
+                        getInstance.Close();
+                        getInstance.Dispose();
                         command.CommandText = "UPDATE `" + TableInstance + "` SET `ServerName` = @servername WHERE `ServerID` = " + InstanceID + ";";
                         command.ExecuteNonQuery();
                     }
