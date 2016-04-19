@@ -123,8 +123,12 @@ namespace PlayerInfoLibrary
                 }
                 if (!GetInstanceID())
                 {
-                    Logger.LogError("Error: Error getting instance id from database.");
-                    return;
+                    // Retry getting the instance id, if the server instance was just added to the database.
+                    if (!GetInstanceID(true))
+                    {
+                        Logger.LogError("Error: Error getting instance id from database.");
+                        return;
+                    }
                 }
 
                 //set keel alive loop.
@@ -174,7 +178,6 @@ namespace PlayerInfoLibrary
                     getInstance.Dispose();
                     command.CommandText = "INSERT INTO `" + TableInstance + "` (`ServerInstance`, `ServerName`) VALUES (@instname, @servername);";
                     command.ExecuteNonQuery();
-                    return GetInstanceID(true);
                 }
                 return false;
             }
