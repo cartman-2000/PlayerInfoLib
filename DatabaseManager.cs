@@ -22,7 +22,7 @@ namespace PlayerInfoLibrary
         private string TableServer;
         internal ushort InstanceID { get; private set; }
         public static readonly uint DatabaseSchemaVersion = 3;
-        public static readonly uint DatabaseInterfaceVersion = 1;
+        public static readonly uint DatabaseInterfaceVersion = 2;
 
         // Initialization section.
         internal DatabaseManager()
@@ -475,6 +475,97 @@ namespace PlayerInfoLibrary
             return playerList;
         }
 
+        public List<object[]> GetCleanupList(OptionType optionType, long beforeTime)
+        {
+            List<object[]> tmp = new List<object[]>();
+            MySqlDataReader reader = null;
+            if (!Initialized)
+            {
+                Logger.LogError("Error: Cant load player info from DB, plugin hasn't initialized properly.");
+                return tmp;
+            }
+            string type = ParseOption(optionType);
+            if (type == null)
+                return tmp;
+            try
+            {
+                MySqlCommand command = Connection.CreateCommand();
+                command.Parameters.AddWithValue("@time", beforeTime);
+                command.Parameters.AddWithValue("@instance", InstanceID);
+                command.CommandText = "SELECT a.SteamID, b.CharName, b.SteamName  FROM `" + TableServer + "` AS a LEFT JOIN `" + Table + "` AS b ON a.SteamID = b.SteamID WHERE a.ServerID = 1 AND a.LastLoginLocal < @time AND a." + type + " = 0 AND b.SteamID IS NOT NULL ORDER BY a.LastLoginLocal  ASC;";
+                reader = command.ExecuteReader();
+                if (!reader.HasRows)
+                {
+                    return tmp;
+                }
+                while (reader.Read())
+                {
+                    tmp.Add(new object[]
+                    {
+                        reader.GetUInt64("SteamID"),
+                        reader.GetString("CharName"),
+                        reader.GetString("SteamName"),
+                    });
+                }
+                return tmp;
+            }
+            catch (MySqlException ex)
+            {
+                HandleException(ex);
+            }
+            finally
+            {
+                if (reader != null)
+                {
+                    reader.Close();
+                    reader.Dispose();
+                }
+            }
+            return tmp;
+        }
+
+        public void SetOption(CSteamID SteamID, OptionType optionType, bool setValue)
+        {
+            if (!Initialized)
+            {
+                Logger.LogError("Error: Cant load player info from DB, plugin hasn't initialized properly.");
+                return;
+            }
+            string type = ParseOption(optionType);
+            if (type == null)
+                return;
+            try
+            {
+                MySqlCommand command = Connection.CreateCommand();
+                command.Parameters.AddWithValue("@steamid", SteamID);
+                command.Parameters.AddWithValue("@instance", InstanceID);
+                command.Parameters.AddWithValue("@setvalue", setValue);
+                command.CommandText = "UPDATE `" + TableServer + "` SET " + type + " = @setvalue WHERE SteamID = @steamid AND ServerID = @instance;";
+                command.ExecuteNonQuery();
+            }
+            catch (MySqlException ex)
+            {
+                HandleException(ex);
+            }
+        }
+
+        private string ParseOption(OptionType optionType)
+        {
+            string type = null;
+            switch (optionType)
+            {
+                case OptionType.Buildables:
+                    type = "CleanedBuildables";
+                    break;
+                case OptionType.PlayerFiles:
+                    type = "CleanedPlayerData";
+                    break;
+                default:
+                    return type;
+            }
+            return type;
+        }
+
         private PlayerData BuildPlayerData(MySqlDataReader reader)
         {
             return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), Parser.getIPFromUInt32(reader.GetUInt32("IP")), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false, reader.GetInt32("TotalPlayTime"));
@@ -541,5 +632,11 @@ namespace PlayerInfoLibrary
         CharName,
         Both,
         IP,
+    }
+
+    public enum OptionType
+    {
+        Buildables,
+        PlayerFiles,
     }
 }
