@@ -492,7 +492,7 @@ namespace PlayerInfoLibrary
                 MySqlCommand command = Connection.CreateCommand();
                 command.Parameters.AddWithValue("@time", beforeTime);
                 command.Parameters.AddWithValue("@instance", InstanceID);
-                command.CommandText = "SELECT a.SteamID, b.CharName, b.SteamName  FROM `" + TableServer + "` AS a LEFT JOIN `" + Table + "` AS b ON a.SteamID = b.SteamID WHERE a.ServerID = 1 AND a.LastLoginLocal < @time AND a." + type + " = 0 AND b.SteamID IS NOT NULL ORDER BY a.LastLoginLocal  ASC;";
+                command.CommandText = "SELECT a.SteamID, b.CharName, b.SteamName  FROM `" + TableServer + "` AS a LEFT JOIN `" + Table + "` AS b ON a.SteamID = b.SteamID WHERE a.ServerID = @instance AND a.LastLoginLocal < @time AND a." + type + " = 0 AND b.SteamID IS NOT NULL ORDER BY a.LastLoginLocal  ASC;";
                 reader = command.ExecuteReader();
                 if (!reader.HasRows)
                 {
