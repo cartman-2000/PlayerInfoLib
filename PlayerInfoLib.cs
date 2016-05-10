@@ -16,7 +16,7 @@ namespace PlayerInfoLibrary
     {
         public static PlayerInfoLib Instance;
         public static DatabaseManager Database;
-        private static Dictionary<CSteamID, DateTime> LoginTime = new Dictionary<CSteamID, DateTime>();
+        internal static Dictionary<CSteamID, DateTime> LoginTime = new Dictionary<CSteamID, DateTime>();
 
         protected override void Load()
         {
@@ -46,10 +46,9 @@ namespace PlayerInfoLibrary
             if (LoginTime.ContainsKey(player.CSteamID))
                 LoginTime.Remove(player.CSteamID);
             LoginTime.Add(player.CSteamID, DateTime.Now);
-            PlayerData pData = Database.QueryById(player.CSteamID, false);
-            int totalTime = pData.TotalPlayime;
-            pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), DateTime.Now, Database.InstanceID, Provider.serverName, Database.InstanceID, DateTime.Now, false, false, totalTime);
-            Database.SaveToDB(pData);
+            // Moved player info updating code to the player component, the ip isn't always fully set by the time this event is called.
+            PlayerInfoLibPComponent pc = player.GetComponent<PlayerInfoLibPComponent>();
+            pc.Start();
         }
 
         private void Events_OnPlayerDisconnected(UnturnedPlayer player)

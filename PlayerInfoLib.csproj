@@ -79,6 +79,7 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="PlayerData.cs" />
     <Compile Include="PlayerInfoLib.cs" />
+    <Compile Include="PlayerInfoLibPComponent.cs" />
     <Compile Include="PlayerInfoLibConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CommandInvestigate.cs" />
