@@ -46,9 +46,14 @@ namespace PlayerInfoLibrary
             if (LoginTime.ContainsKey(player.CSteamID))
                 LoginTime.Remove(player.CSteamID);
             LoginTime.Add(player.CSteamID, DateTime.Now);
-            // Moved player info updating code to the player component, the ip isn't always fully set by the time this event is called.
+            PlayerData pData = Database.QueryById(player.CSteamID, false);
+            int totalTime = pData.TotalPlayime;
+            DateTime loginTime = PlayerInfoLib.LoginTime[player.CSteamID];
+            pData = new PlayerData(player.CSteamID, player.SteamName, player.CharacterName, player.CSteamID.GetIP(), loginTime, Database.InstanceID, Provider.serverName, Database.InstanceID, loginTime, false, false, totalTime);
+            Database.SaveToDB(pData);
+            // Recheck the ip address in the component, the ip isn't always fully set by the time this event is called.
             PlayerInfoLibPComponent pc = player.GetComponent<PlayerInfoLibPComponent>();
-            pc.Start();
+            pc.Start(pData);
         }
 
         private void Events_OnPlayerDisconnected(UnturnedPlayer player)
@@ -58,7 +63,7 @@ namespace PlayerInfoLibrary
                 if (LoginTime.ContainsKey(player.CSteamID))
                 {
                     PlayerData pData = Database.QueryById(player.CSteamID, false);
-                    if (pData.IsValid())
+                    if (pData.IsValid() && pData.IsLocal())
                     {
                         int totalSessionTime = (int)(DateTime.Now - LoginTime[player.CSteamID]).TotalSeconds;
                         pData.TotalPlayime += totalSessionTime;

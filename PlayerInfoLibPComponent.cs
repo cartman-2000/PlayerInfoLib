@@ -8,6 +8,7 @@ namespace PlayerInfoLibrary
     {
         private bool start;
         private DateTime startTime;
+        private PlayerData pData;
         private float ping;
 
         protected override void Load()
@@ -15,9 +16,10 @@ namespace PlayerInfoLibrary
             start = false;
         }
 
-        internal void Start()
+        internal void Start(PlayerData pdata)
         {
             startTime = DateTime.Now;
+            pData = pdata;
             start = true;
         }
 
@@ -31,11 +33,11 @@ namespace PlayerInfoLibrary
                 if ((DateTime.Now - startTime).TotalSeconds >= 3 + (ping * 10))
                 {
                     start = false;
-                    PlayerData pData = PlayerInfoLib.Database.QueryById(Player.CSteamID, false);
-                    int totalTime = pData.TotalPlayime;
-                    DateTime loginTime = PlayerInfoLib.LoginTime[Player.CSteamID];
-                    pData = new PlayerData(Player.CSteamID, Player.SteamName, Player.CharacterName, Player.CSteamID.GetIP(), loginTime, PlayerInfoLib.Database.InstanceID, Provider.serverName, PlayerInfoLib.Database.InstanceID, loginTime, false, false, totalTime);
-                    PlayerInfoLib.Database.SaveToDB(pData);
+                    if (Player.CSteamID.GetIP() != pData.IP)
+                    {
+                        pData.IP = Player.CSteamID.GetIP();
+                        PlayerInfoLib.Database.SaveToDB(pData);
+                    }
                     enabled = false;
                 }
             }
