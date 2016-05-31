@@ -5,7 +5,6 @@ using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Timers;
 
 namespace PlayerInfoLibrary
 {
@@ -14,7 +13,6 @@ namespace PlayerInfoLibrary
         private Dictionary<CSteamID, PlayerData> Cache = new Dictionary<CSteamID, PlayerData>();
         public bool Initialized { get; private set; }
         private MySqlConnection Connection = null;
-        private Timer KeepAlive = null;
         private int MaxRetry = 5;
         private string Table;
         private string TableConfig;
@@ -38,11 +36,6 @@ namespace PlayerInfoLibrary
 
         internal void Unload()
         {
-            if(KeepAlive != null)
-            {
-                KeepAlive.Stop();
-                KeepAlive.Dispose();
-            }
             Connection.Dispose();
         }
 
@@ -99,7 +92,6 @@ namespace PlayerInfoLibrary
                 }
                 else
                 {
-                    
                     command.CommandText = "SELECT `value` FROM `" + TableConfig + "` WHERE `key` = 'version'";
                     object result = command.ExecuteScalar();
                     if (result != null)
@@ -129,15 +121,6 @@ namespace PlayerInfoLibrary
                         Logger.LogError("Error: Error getting instance id from database.");
                         return;
                     }
-                }
-
-                //set keel alive loop.
-                if (KeepAlive == null)
-                {
-                    KeepAlive = new Timer(PlayerInfoLib.Instance.Configuration.Instance.KeepaliveInterval * 60000);
-                    KeepAlive.Elapsed += delegate { CheckConnection(); CheckExpired(); };
-                    KeepAlive.AutoReset = true;
-                    KeepAlive.Start();
                 }
                 Initialized = true;
             }
@@ -192,6 +175,27 @@ namespace PlayerInfoLibrary
                     getInstance.Close();
                     getInstance.Dispose();
                 }
+            }
+            return false;
+        }
+
+        internal bool SetInstanceName(string newName)
+        {
+            try
+            {
+                if (Initialized)
+                {
+                    MySqlCommand command = Connection.CreateCommand();
+                    command.Parameters.AddWithValue("@newname", newName);
+                    command.Parameters.AddWithValue("@instance", InstanceID);
+                    command.CommandText = "UPDATE `" + TableInstance + "` SET `ServerInstance` = @newname WHERE `ServerID` = @instance;";
+                    command.ExecuteNonQuery();
+                    return true;
+                }
+            }
+            catch (MySqlException ex)
+            {
+                HandleException(ex);
             }
             return false;
         }
@@ -263,13 +267,16 @@ namespace PlayerInfoLibrary
         }
 
         // Connection handling section.
-        private void CheckConnection()
+        internal void CheckConnection()
         {
             try
             {
-                MySqlCommand command = Connection.CreateCommand();
-                command.CommandText = "SELECT 1";
-                command.ExecuteNonQuery();
+                if (Initialized)
+                {
+                    MySqlCommand command = Connection.CreateCommand();
+                    command.CommandText = "SELECT 1";
+                    command.ExecuteNonQuery();
+                }
             }
             catch (MySqlException ex)
             {
@@ -571,12 +578,158 @@ namespace PlayerInfoLibrary
             return new PlayerData((CSteamID)reader.GetUInt64("SteamID"), reader.GetString("SteamName"), reader.GetString("CharName"), Parser.getIPFromUInt32(reader.GetUInt32("IP")), reader.GetInt64("LastLoginGlobal").FromTimeStamp(), reader.GetUInt16("LastServerID"), !reader.IsDBNull("LastServerName") ? reader.GetString("LastServerName") : string.Empty, !reader.IsDBNull("ServerID") ? reader.GetUInt16("ServerID") : (ushort)0, !reader.IsDBNull("LastLoginLocal") ? reader.GetInt64("LastLoginLocal").FromTimeStamp() : (0L).FromTimeStamp(), !reader.IsDBNull("CleanedBuildables") ? reader.GetBoolean("CleanedBuildables") : false, !reader.IsDBNull("CleanedPlayerData") ? reader.GetBoolean("CleanedPlayerData") : false, reader.GetInt32("TotalPlayTime"));
         }
 
-        private void CheckExpired()
+        // Cleanup section.
+        internal void CheckExpired()
         {
             List<KeyValuePair<CSteamID, PlayerData>> tmp = Cache.Where(pd => pd.Value.IsCacheExpired()).ToList<KeyValuePair<CSteamID, PlayerData>>();
             foreach (KeyValuePair<CSteamID, PlayerData> pdata in tmp)
             {
                 Cache.Remove(pdata.Key);
+            }
+        }
+
+        internal bool RemoveInstance(ushort InstanceId)
+        {
+            if (!Initialized)
+            {
+                return false;
+            }
+            else
+            {
+                MySqlDataReader reader = null;
+                Dictionary<ulong, object[]> records = new Dictionary<ulong, object[]>();
+                try
+                {
+                    MySqlCommand command = Connection.CreateCommand();
+                    command.Parameters.AddWithValue("@forinstance", InstanceId);
+                    command.CommandText = "SELECT ServerID FROM `" + TableInstance + "` WHERE ServerID = @forinstance;";
+                    object result = command.ExecuteScalar();
+                    if (result == null)
+                    {
+                        return false;
+                    }
+                    command.CommandText = "SELECT SteamID FROM `" + TableServer + "` WHERE ServerID = @forinstance";
+                    reader = command.ExecuteReader();
+                    if(reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            records.Add(reader.GetUInt64("SteamID"), new object[] {});
+                        }
+                        reader.Close();
+                        reader.Dispose();
+                        ProcessRecordRemoval(command, records, InstanceId);
+                        command.CommandText = "DELETE FROM `" + TableInstance + "` WHERE ServerID = " + InstanceId + ";";
+                        command.ExecuteNonQuery();
+                        if (InstanceId == InstanceID)
+                            Initialized = false;
+                        return true;
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    HandleException(ex);
+                    return false;
+                }
+                finally
+                {
+                    if (reader != null)
+                    {
+                        reader.Close();
+                        reader.Dispose();
+                    }
+                }
+            }
+            return true;
+        }
+
+        internal void PrecessExpiredPInfo()
+        {
+            if (Initialized)
+            {
+                MySqlDataReader reader = null;
+                Dictionary<ulong, object[]> records = new Dictionary<ulong, object[]>();
+                try
+                {
+                    MySqlCommand command = Connection.CreateCommand();
+                    command.Parameters.AddWithValue("@forinstance", InstanceID);
+                    command.Parameters.AddWithValue("@calcedcutoff", (DateTime.Now.ToTimeStamp() - PlayerInfoLib.Instance.Configuration.Instance.ExpiresAfter * 86400));
+                    command.CommandText = "SELECT a.SteamID, b.CharName, b.SteamName FROM `" + TableServer + "` AS a LEFT JOIN `" + Table + "` AS b ON a.SteamID = b.SteamID WHERE ServerID = @forinstance AND LastLoginLocal < @calcedcutoff;";
+                    reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            records.Add(reader.GetUInt64("SteamID"), new object[] { reader.GetString("CharName"), reader.GetString("SteamName") });
+                        }
+                        reader.Close();
+                        reader.Dispose();
+                        ProcessRecordRemoval(command, records, InstanceID, false);
+                    }
+                    else
+                    {
+                        Logger.Log("No expired player info records found for this batch.", ConsoleColor.Yellow);
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    HandleException(ex);
+                }
+                finally
+                {
+                    if (reader != null)
+                    {
+                        reader.Close();
+                        reader.Dispose();
+                    }
+                }
+            }
+        }
+
+        private void ProcessRecordRemoval(MySqlCommand command, Dictionary<ulong, object[]> records, ushort InstanceId, bool InstanceRemoval = true)
+        {
+            try
+            {
+                int totalRemoved = 0;
+                int totalRemovedServer = 0;
+                int recordNum = 0;
+                if (InstanceRemoval)
+                    Logger.Log(string.Format("Starting player info removal process For the entered Instance ID, number of records to process: {0}.", records.Count), ConsoleColor.Yellow);
+                else
+                    Logger.Log(string.Format("Starting expired player info cleanup process, number of records to cleanup in this batch: {0}", records.Count), ConsoleColor.Yellow);
+
+                foreach (KeyValuePair<ulong, object[]> val in records)
+                {
+                    int count = 0;
+                    recordNum++;
+                    if (recordNum % 1000 == 0)
+                        Logger.Log(string.Format("Processing record: {0} of {1}", recordNum, records.Count));
+                    command.CommandText = "SELECT COUNT(*) as count FROM `" + TableServer + "` WHERE SteamID = " + val.Key + ";";
+                    object resultc = command.ExecuteScalar();
+                    if(resultc != null && resultc != DBNull.Value)
+                    {
+                        if (int.TryParse(resultc.ToString(), out count))
+                        {
+                            if (!InstanceRemoval)
+                                Logger.Log(string.Format("Removing Player info for: {0} [{1}] ({2})", val.Value[0].ToString(), val.Value[1].ToString(), val.Key));
+                            if (count <= 1)
+                            {
+                                command.CommandText = "DELETE FROM `" + Table + "` WHERE SteamID = " + val.Key + ";";
+                                command.ExecuteNonQuery();
+                                totalRemoved++;
+                            }
+                            command.CommandText = "DELETE FROM `" + TableServer + "` WHERE SteamID = " + val.Key + " AND ServerID = " + InstanceId + ";";
+                            command.ExecuteNonQuery();
+                            totalRemovedServer++;
+                        }
+                    }
+
+                }
+                Logger.Log(string.Format("Finished player info cleanup. Number cleaned: {0}: {1}, {2}: {3}.", TableServer, totalRemovedServer, Table, totalRemoved), ConsoleColor.Yellow);
+            }
+            catch (MySqlException ex)
+            {
+                HandleException(ex);
             }
         }
 

@@ -75,6 +75,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandDelInstance.cs" />
+    <Compile Include="CommandRnInstance.cs" />
     <Compile Include="DatabaseManager.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="PlayerData.cs" />

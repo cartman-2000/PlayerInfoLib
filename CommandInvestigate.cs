@@ -1,13 +1,10 @@
 using Rocket.API;
 using Rocket.API.Extensions;
 using Rocket.Unturned.Chat;
-using Rocket.Unturned.Commands;
 using SDG.Unturned;
 using Steamworks;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 
 namespace PlayerInfoLibrary
@@ -50,7 +47,7 @@ namespace PlayerInfoLibrary
         {
             if (command.Length == 0)
             {
-                UnturnedChat.Say(caller, Syntax + " - " + Help);
+                UnturnedChat.Say(caller, PlayerInfoLib.Instance.Translate("investigate_help"));
             }
             CSteamID cSteamID;
             uint totalRecods = 1;
@@ -65,13 +62,13 @@ namespace PlayerInfoLibrary
                     page = command.GetUInt32Parameter(1);
                     if (page == null || page == 0)
                     {
-                        UnturnedChat.Say(caller, "Invalid page number");
+                        UnturnedChat.Say(caller, PlayerInfoLib.Instance.Translate("invalid_page"));
                         return;
                     }
                 }
                 if (command.Length > 2)
                 {
-                    UnturnedChat.Say(caller, "Too many parameters.");
+                    UnturnedChat.Say(caller, PlayerInfoLib.Instance.Translate("too_many_parameters"));
                     return;
                 }
                 // Is what is entered in the command a SteamID64 number?

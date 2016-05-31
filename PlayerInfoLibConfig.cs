@@ -1,5 +1,4 @@
-﻿using System;
-using Rocket.API;
+﻿using Rocket.API;
 
 namespace PlayerInfoLibrary
 {
@@ -13,6 +12,8 @@ namespace PlayerInfoLibrary
         public string DatabaseTableName = "playerinfo";
         public float KeepaliveInterval = 10;
         public float CacheTime = 180;
+        public float ExpiredCheckInterval = 30;
+        public float ExpiresAfter = 365;
 
         public void LoadDefaults() { }
     }
