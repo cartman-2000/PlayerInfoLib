@@ -32,35 +32,35 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>BaseLib\Assembly-CSharp.dll</HintPath>
+      <HintPath>lib\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>BaseLib\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>lib\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="I18N">
-      <HintPath>MySQLLib\I18N.dll</HintPath>
+      <HintPath>Libraries\I18N.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="I18N.West">
-      <HintPath>MySQLLib\I18N.West.dll</HintPath>
+      <HintPath>Libraries\I18N.West.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="MySql.Data">
-      <HintPath>MySQLLib\MySql.Data.dll</HintPath>
+      <HintPath>Libraries\MySql.Data.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Rocket.API">
-      <HintPath>BaseLib\Rocket.API.dll</HintPath>
+      <HintPath>lib\Rocket.API.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Rocket.Core">
-      <HintPath>BaseLib\Rocket.Core.dll</HintPath>
+      <HintPath>lib\Rocket.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Rocket.Unturned">
-      <HintPath>BaseLib\Rocket.Unturned.dll</HintPath>
+      <HintPath>lib\Rocket.Unturned.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -70,7 +70,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>BaseLib\UnityEngine.dll</HintPath>
+      <HintPath>lib\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -88,18 +88,38 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <Content Include="BaseLib\Assembly-CSharp-firstpass.dll" />
-    <Content Include="BaseLib\Assembly-CSharp.dll" />
-    <Content Include="BaseLib\Rocket.API.dll" />
-    <Content Include="BaseLib\Rocket.Core.dll" />
-    <Content Include="BaseLib\Rocket.Unturned.dll" />
-    <Content Include="BaseLib\UnityEngine.dll" />
-    <Content Include="MySQLLib\I18N.dll" />
-    <Content Include="MySQLLib\I18N.West.dll" />
-    <Content Include="MySQLLib\MySql.Data.dll" />
-    <Content Include="MySQLLib\System.Data.dll" />
-    <Content Include="MySQLLib\System.Management.dll" />
-    <Content Include="MySQLLib\System.Transactions.dll" />
+    <Content Include="lib\Assembly-CSharp-firstpass.dll" />
+    <Content Include="lib\Assembly-CSharp.dll" />
+    <Content Include="lib\Rocket.API.dll" />
+    <Content Include="lib\Rocket.Core.dll" />
+    <Content Include="lib\Rocket.Unturned.dll" />
+    <Content Include="lib\UnityEngine.dll" />
+    <Content Include="Libraries\I18N.dll" />
+    <Content Include="Libraries\I18N.West.dll" />
+    <Content Include="Libraries\MySql.Data.dll" />
+    <Content Include="Libraries\System.Data.dll" />
+    <Content Include="Libraries\System.Management.dll" />
+    <Content Include="Libraries\System.Transactions.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Libraries\I18N.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libraries\I18N.West.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libraries\MySql.Data.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libraries\System.Data.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libraries\System.Management.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libraries\System.Transactions.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
