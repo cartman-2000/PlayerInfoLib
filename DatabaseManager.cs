@@ -136,7 +136,7 @@ namespace PlayerInfoLibrary
             MySqlDataReader getInstance = null;
             try {
                 MySqlCommand command = Connection.CreateCommand();
-                command.Parameters.AddWithValue("@instname", Dedicator.InstanceName.ToLower());
+                command.Parameters.AddWithValue("@instname", Provider.serverID.ToLower());
                 command.Parameters.AddWithValue("@servername", Provider.serverName);
                 command.CommandText = "SELECT `ServerID`, `ServerName` FROM `" + TableInstance + "` WHERE `ServerInstance` = @instname;";
                 getInstance = command.ExecuteReader();
