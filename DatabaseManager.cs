@@ -19,7 +19,7 @@ namespace PlayerInfoLibrary
         private string TableInstance;
         private string TableServer;
         internal ushort InstanceID { get; private set; }
-        public static readonly uint DatabaseSchemaVersion = 3;
+        public static readonly uint DatabaseSchemaVersion = 4;
         public static readonly uint DatabaseInterfaceVersion = 2;
 
         // Initialization section.
@@ -259,6 +259,17 @@ namespace PlayerInfoLibrary
                     command.ExecuteNonQuery();
                     Logger.LogWarning("Finished.");
                 }
+                if (version < 4)
+                {
+                    updatingVersion = 4;
+                    // Updating tables to handle Special UTF8 characters(like emoji characters.)
+                    Logger.LogWarning("Updating Playerinfo DB to version: " + updatingVersion);
+                    command.CommandText = "ALTER TABLE `" + Table + "` MODIFY `SteamName` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, MODIFY `CharName` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;" +
+                        "ALTER TABLE `"+ TableInstance + "` MODIFY `ServerInstance` VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, MODIFY `ServerName` VARCHAR(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;" +
+                        "REPAIR TABLE `" + Table + "`, `" + TableInstance + "`;" +
+                        "UPDATE `" + TableConfig + "` SET `value` = '4' WHERE `key` = 'version';";
+                    command.ExecuteNonQuery();
+                }
             }
             catch (MySqlException ex)
             {
@@ -291,7 +302,7 @@ namespace PlayerInfoLibrary
                 Connection = null;
                 if (PlayerInfoLib.Instance.Configuration.Instance.DatabasePort == 0)
                     PlayerInfoLib.Instance.Configuration.Instance.DatabasePort = 3306;
-                Connection = new MySqlConnection(string.Format("SERVER={0};DATABASE={1};UID={2};PASSWORD={3};PORT={4};", PlayerInfoLib.Instance.Configuration.Instance.DatabaseAddress, PlayerInfoLib.Instance.Configuration.Instance.DatabaseName, PlayerInfoLib.Instance.Configuration.Instance.DatabaseUserName, PlayerInfoLib.Instance.Configuration.Instance.DatabasePassword, PlayerInfoLib.Instance.Configuration.Instance.DatabasePort));
+                Connection = new MySqlConnection(string.Format("SERVER={0};DATABASE={1};UID={2};PASSWORD={3};PORT={4};CHARSET=utf8mb4", PlayerInfoLib.Instance.Configuration.Instance.DatabaseAddress, PlayerInfoLib.Instance.Configuration.Instance.DatabaseName, PlayerInfoLib.Instance.Configuration.Instance.DatabaseUserName, PlayerInfoLib.Instance.Configuration.Instance.DatabasePassword, PlayerInfoLib.Instance.Configuration.Instance.DatabasePort));
                 Connection.Open();
                 return true;
             }
