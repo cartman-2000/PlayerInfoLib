@@ -95,7 +95,7 @@ namespace PlayerInfoLibrary
                         start++;
                         if (pData.IsLocal())
                         {
-                            UnturnedChat.Say(caller, string.Format("{0}: {1} [{2}] ({3}), IP: {4}, Local: {5}", start, caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(12), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(12), pData.SteamID, pData.IP, pData.IsLocal()), Color.yellow);
+                            UnturnedChat.Say(caller, string.Format("{0}: {1} [{2}] ({3}), IP: {4}, Local: {5}, IsVip: {6}", start, caller is ConsolePlayer ? pData.CharacterName : pData.CharacterName.Truncate(12), caller is ConsolePlayer ? pData.SteamName : pData.SteamName.Truncate(12), pData.SteamID, pData.IP, pData.IsLocal(), pData.IsVip()), Color.yellow);
                             UnturnedChat.Say(caller, string.Format("Seen: {0}, TT: {1}, Cleaned:{2}:{3}", pData.LastLoginLocal, pData.TotalPlayime.FormatTotalTime(), pData.CleanedBuildables, pData.CleanedPlayerData), Color.yellow);
                         }
                         else

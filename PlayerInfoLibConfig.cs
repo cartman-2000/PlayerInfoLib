@@ -14,6 +14,7 @@ namespace PlayerInfoLibrary
         public float CacheTime = 180;
         public float ExpiredCheckInterval = 30;
         public float ExpiresAfter = 365;
+        public string VipCheckGroupName = "vip";
 
         public void LoadDefaults() { }
     }

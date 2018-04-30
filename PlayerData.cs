@@ -1,5 +1,8 @@
-﻿using Steamworks;
+﻿using Rocket.API;
+using Rocket.Core;
+using Steamworks;
 using System;
+using System.Linq;
 
 namespace PlayerInfoLibrary
 {
@@ -25,6 +28,8 @@ namespace PlayerInfoLibrary
         /// <returns>true if the data is from this server.</returns>
         public bool IsLocal()
         {
+            if (!IsValid())
+                return false;
             return ServerID == PlayerInfoLib.Database.InstanceID;
         }
 
@@ -46,6 +51,17 @@ namespace PlayerInfoLibrary
             if (CacheTime != null)
                 return ((DateTime.Now - CacheTime).TotalSeconds >= (PlayerInfoLib.Instance.Configuration.Instance.CacheTime * 60));
             return true;
+        }
+
+        /// <summary>
+        /// Checks players groups against the config value set in the plugin config to see if they're a VIP.
+        /// </summary>
+        /// <returns>true if a match is found.</returns>
+        public bool IsVip()
+        {
+            if (!IsValid())
+                return false;
+            return R.Permissions.GetGroups(new RocketPlayer(SteamID.ToString()), true).FirstOrDefault(g => g.Id == PlayerInfoLib.Instance.Configuration.Instance.VipCheckGroupName) != null;
         }
 
         internal PlayerData()
